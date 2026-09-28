@@ -1,5 +1,6 @@
 package ir.mahroch.tapekhash.ui.screens.tape
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -191,12 +192,17 @@ private fun HostImagesList() {
 @Composable
 private fun HostImageCard(img: HostImage) {
     val ok = img.status == HOST_IMAGE_STATUS_OK
+    var showViewer by remember { mutableStateOf(false) }
+    if (showViewer && img.imageUrl.isNotBlank()) {
+        ImageViewerDialog(urls = listOf(img.imageUrl), onDismiss = { showViewer = false })
+    }
+
     Card(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
                 model = img.imageUrl,
                 contentDescription = img.tapeCode,
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.size(64.dp).clickable { showViewer = true }
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {

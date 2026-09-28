@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -149,13 +150,17 @@ fun TapeAddTab() {
             Spacer(Modifier.height(8.dp))
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
+        var showPreviewViewer by remember { mutableStateOf(false) }
+        if (showPreviewViewer && previewUrl.isNotBlank()) {
+            ImageViewerDialog(urls = listOf(previewUrl), onDismiss = { showPreviewViewer = false })
+        }
         if (previewUrl.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AsyncImage(
                     model = previewUrl,
                     contentDescription = "پیش‌نمایش عکس تپه‌ی «$tapeCode»",
-                    modifier = Modifier.size(90.dp)
+                    modifier = Modifier.size(90.dp).clickable { showPreviewViewer = true }
                 )
                 Spacer(Modifier.width(12.dp))
                 Column {

@@ -1,8 +1,11 @@
 package ir.mahroch.tapekhash.ui.screens.tape
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -17,7 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -25,7 +30,6 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 
 /** نمایش تمام‌صفحه‌ی عکس تپه؛ با دو انگشت زوم می‌شود و اگر چند عکس باشد با کشیدن جابه‌جا می‌شود. */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ImageViewerDialog(urls: List<String>, startIndex: Int = 0, onDismiss: () -> Unit) {
     if (urls.isEmpty()) return
@@ -74,15 +78,34 @@ private fun ZoomableImage(url: String, onZoomChanged: (Boolean) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .clipToBounds()
+            // دو بار لمس: برگشت به اندازه‌ی اصلی
             .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(1f, 5f)
-                    if (scale == 1f) {
-                        offsetX = 0f; offsetY = 0f
-                    } else {
-                        offsetX += pan.x; offsetY += pan.y
-                    }
-                    onZoomChanged(scale > 1f)
+                detectTapGestures(onDoubleTap = {
+                    scale = 1f; offsetX = 0f; offsetY = 0f
+                    onZoomChanged(false)
+                })
+            }
+            // زوم/جابه‌جایی فقط با دو انگشت یا وقتی عکس زوم شده؛
+            // با یک انگشت روی عکس زوم‌نشده، رویداد مصرف نمی‌شود تا Pager بتواند صفحه را عوض کند.
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    do {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        val multiTouch = event.changes.size > 1
+                        if (multiTouch || scale > 1f) {
+                            val zoom = event.calculateZoom()
+                            val pan = event.calculatePan()
+                            scale = (scale * zoom).coerceIn(1f, 5f)
+                            if (scale == 1f) {
+                                offsetX = 0f; offsetY = 0f
+                            } else {
+                                offsetX += pan.x; offsetY += pan.y
+                            }
+                            onZoomChanged(scale > 1f)
+                            event.changes.forEach { if (it.positionChanged()) it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
                 }
             }
             .graphicsLayer(

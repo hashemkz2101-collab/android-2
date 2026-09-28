@@ -1,5 +1,6 @@
 package ir.mahroch.tapekhash.ui.screens.tape
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -30,6 +31,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 
 /** نمایش تمام‌صفحه‌ی عکس تپه؛ با دو انگشت زوم می‌شود و اگر چند عکس باشد با کشیدن جابه‌جا می‌شود. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ImageViewerDialog(urls: List<String>, startIndex: Int = 0, onDismiss: () -> Unit) {
     if (urls.isEmpty()) return

@@ -25,6 +25,7 @@ fun TapeAddTab() {
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var loading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var messageIsWarning by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -82,10 +83,18 @@ fun TapeAddTab() {
                 else body.put("imageCode", tapeCode.trim()) // برای Gxxx/Bxxx خودش کد عکس معتبر است
 
                 val res = ApiClient.call("addTape", body)
-                message = if (res.optString("mode") == "image-added")
-                    "عکس جدید به تپه‌ی موجود اضافه شد."
-                else
-                    "تپه با موفقیت ثبت شد."
+                val boxMismatch = res.optString("mode") == "image-added" && res.optBoolean("boxMismatch")
+                messageIsWarning = boxMismatch
+                message = when {
+                    boxMismatch ->
+                        "این تپه (${res.optString("tape")}) قبلاً در باکس «${res.optString("box")}» ثبت شده بود، " +
+                            "نه در باکس «${res.optString("enteredBox")}» که وارد کردید. " +
+                            "عکس جدید به همین تپه در باکس «${res.optString("box")}» اضافه شد؛ برای تغییر باکس این تپه از بخش «ویرایش تپه» در پنل مدیر استفاده کنید."
+                    res.optString("mode") == "image-added" ->
+                        "عکس جدید به تپه‌ی موجود اضافه شد."
+                    else ->
+                        "تپه با موفقیت ثبت شد."
+                }
 
                 boxCode = ""; tapeCode = ""; imageUri = null
             } catch (e: ApiException) {
@@ -132,7 +141,10 @@ fun TapeAddTab() {
         }
         if (message != null) {
             Spacer(Modifier.height(8.dp))
-            Text(message!!, color = MaterialTheme.colorScheme.primary)
+            Text(
+                message!!,
+                color = if (messageIsWarning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            )
         }
 
         Spacer(Modifier.height(16.dp))
@@ -141,3 +153,4 @@ fun TapeAddTab() {
         }
     }
 }
+

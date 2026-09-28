@@ -7,13 +7,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import ir.mahroch.tapekhash.data.ApiClient
 import ir.mahroch.tapekhash.data.ApiException
 import ir.mahroch.tapekhash.data.Session
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
@@ -27,11 +30,32 @@ fun TapeAddTab() {
     var message by remember { mutableStateOf<String?>(null) }
     var messageIsWarning by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var previewUrl by remember { mutableStateOf("") }
+    var previewLoading by remember { mutableStateOf(false) }
+    var previewExistingBox by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         imageUri = uri
+    }
+
+    // با تایپ کد تپه، بعد از کمی مکث، عکسش را از سرور (GOL/BON یا تپه‌ی از قبل ثبت‌شده) پیش‌نمایش بده
+    // تا قبل از ثبت باکس اشتباه، کاربر مطمئن شود این همان تپه‌ی مدنظرش است.
+    LaunchedEffect(tapeCode) {
+        val code = tapeCode.trim()
+        previewUrl = ""; previewExistingBox = ""
+        if (!Regex("^[BGbg][0-9]+$").matches(code)) return@LaunchedEffect
+        delay(400) // منتظر بمان تا کاربر تایپش تمام شود
+        previewLoading = true
+        try {
+            val res = ApiClient.call("getTapeRegistrationInfo", JSONObject().put("tapeCode", code))
+            previewUrl = res.optString("imageUrl")
+            if (res.optBoolean("exists")) previewExistingBox = res.optString("box")
+        } catch (e: Exception) {
+            // پیش‌نمایش اختیاری است؛ خطایش مانع فرم اصلی نشود
+        }
+        previewLoading = false
     }
 
     fun submit() {
@@ -120,6 +144,32 @@ fun TapeAddTab() {
             value = tapeCode, onValueChange = { tapeCode = it },
             label = { Text("کد تپه (مثل G12 یا B34)") }, modifier = Modifier.fillMaxWidth(), singleLine = true
         )
+
+        if (previewLoading) {
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
+        if (previewUrl.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AsyncImage(
+                    model = previewUrl,
+                    contentDescription = "پیش‌نمایش عکس تپه‌ی «$tapeCode»",
+                    modifier = Modifier.size(90.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("این عکسِ کد «${tapeCode.trim()}» روی هاست است — قبل از ثبت مطمئن شوید همین تپه‌ی مدنظرتان است.")
+                    if (previewExistingBox.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "این تپه قبلاً در باکس «$previewExistingBox» ثبت شده است.",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
 
         OutlinedButton(onClick = { pickImage.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
@@ -153,4 +203,3 @@ fun TapeAddTab() {
         }
     }
 }
-

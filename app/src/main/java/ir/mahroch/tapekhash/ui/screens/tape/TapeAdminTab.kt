@@ -14,10 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import ir.mahroch.tapekhash.data.ApiClient
 import ir.mahroch.tapekhash.data.ApiException
-import ir.mahroch.tapekhash.data.HostImage
 import ir.mahroch.tapekhash.data.Session
 import ir.mahroch.tapekhash.data.TapeRow
 import kotlinx.coroutines.launch
@@ -26,7 +24,7 @@ import java.io.File
 
 private enum class AdminSection(val label: String) {
     USERS("کاربران"), ACTIVE("کاربران فعال"), HISTORY("تاریخچه"),
-    IMPORT("ایمپورت اکسل"), EDIT("ویرایش تپه"), HOST_IMAGES("عکس‌های هاست")
+    IMPORT("ایمپورت اکسل"), EDIT("ویرایش تپه")
 }
 
 @Composable
@@ -46,7 +44,6 @@ fun TapeAdminTab() {
                 AdminSection.HISTORY -> HistorySection()
                 AdminSection.IMPORT -> ExcelImportSection()
                 AdminSection.EDIT -> EditTapeSection()
-                AdminSection.HOST_IMAGES -> HostImagesSection()
             }
         }
     }
@@ -404,100 +401,4 @@ private fun EditTapeDialog(row: TapeRow, onDismiss: () -> Unit, onSaved: () -> U
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
     )
-}
-
-// ---------------- عکس‌های هاست (GOL / BON / catalog) ----------------
-
-private val HOST_IMAGE_STATUS_OK = "تپه در باکس موجود است"
-
-/**
- * همه‌ی فایل‌های پوشه‌های GOL، BON و catalog روی هاست را نشان می‌دهد.
- * برای هر فایل، اگر تپه‌ی معادلش کد باکس داشته باشد وضعیتش «تپه در باکس موجود است»
- * و در غیر این صورت «این تپه ناموجود است» است. وضعیت هر بار با تازه‌سازی از دیتابیس خوانده می‌شود،
- * پس به‌محض ثبت کد باکس برای آن تپه (در تب افزودن یا ویرایش)، اینجا هم به‌روز می‌شود.
- */
-@Composable
-private fun HostImagesSection() {
-    var all by remember { mutableStateOf<List<HostImage>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var filter by remember { mutableStateOf("") }
-    var onlyMissing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    suspend fun load() {
-        loading = true; error = null
-        try {
-            val res = ApiClient.call("listHostImages", JSONObject())
-            val arr = res.getJSONArray("images")
-            all = (0 until arr.length()).map { HostImage.fromJson(arr.getJSONObject(it)) }
-        } catch (e: ApiException) {
-            error = e.message
-        } catch (e: Exception) {
-            error = "خطا در ارتباط با سرور."
-        }
-        loading = false
-    }
-
-    LaunchedEffect(Unit) { load() }
-
-    val shown = remember(all, filter, onlyMissing) {
-        val q = filter.trim()
-        all.filter { img ->
-            (q.isEmpty() || img.tapeCode.contains(q, ignoreCase = true) || img.fileName.contains(q, ignoreCase = true)) &&
-                (!onlyMissing || img.status != HOST_IMAGE_STATUS_OK)
-        }
-    }
-
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = filter, onValueChange = { filter = it },
-                label = { Text("فیلتر بر اساس کد تپه یا نام فایل") },
-                modifier = Modifier.weight(1f), singleLine = true
-            )
-            Spacer(Modifier.width(8.dp))
-            OutlinedButton(onClick = { scope.launch { load() } }) { Text("تازه‌سازی") }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = onlyMissing, onCheckedChange = { onlyMissing = it })
-            Text("فقط تپه‌های ناموجود")
-        }
-        Text("تعداد: ${shown.size} از ${all.size}", style = MaterialTheme.typography.bodySmall)
-        Spacer(Modifier.height(4.dp))
-
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(shown, key = { it.folder + "/" + it.fileName }) { img -> HostImageCard(img) }
-        }
-    }
-}
-
-@Composable
-private fun HostImageCard(img: HostImage) {
-    val ok = img.status == HOST_IMAGE_STATUS_OK
-    Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            AsyncImage(
-                model = img.imageUrl,
-                contentDescription = img.tapeCode,
-                modifier = Modifier.size(64.dp)
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(img.tapeCode.ifBlank { img.fileName }, style = MaterialTheme.typography.titleMedium)
-                Text("پوشه: ${img.folder} — فایل: ${img.fileName}", style = MaterialTheme.typography.bodySmall)
-                if (img.boxCode.isNotBlank()) {
-                    Text("باکس: ${img.boxCode}", style = MaterialTheme.typography.bodySmall)
-                }
-                Text(
-                    img.status,
-                    color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
-    }
 }

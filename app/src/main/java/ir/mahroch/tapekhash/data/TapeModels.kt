@@ -34,3 +34,26 @@ data class TapeRow(
         }
     }
 }
+
+/** یک فایل عکس در پوشه‌ی GOL/BON/catalog روی هاست، همراه با وضعیت تطبیقش با جدول تپه‌ها. */
+data class HostImage(
+    val fileName: String,
+    val folder: String,
+    val tapeCode: String,
+    val tapeId: Int?,
+    val boxCode: String,
+    val imageUrl: String,
+    val status: String
+) {
+    companion object {
+        fun fromJson(o: JSONObject): HostImage = HostImage(
+            fileName = o.optString("fileName"),
+            folder = o.optString("folder"),
+            tapeCode = o.optString("tapeCode"),
+            tapeId = if (o.isNull("tapeId")) null else o.optInt("tapeId"),
+            boxCode = o.optString("boxCode"),
+            imageUrl = o.optString("imageUrl"),
+            status = o.optString("status")
+        )
+    }
+}

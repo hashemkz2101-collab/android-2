@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -14,7 +15,7 @@ import ir.mahroch.tapekhash.data.Session
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppSelectScreen(onOpenTape: () -> Unit, onOpenKhash: () -> Unit, onLogout: () -> Unit) {
+fun AppSelectScreen(onOpenTape: () -> Unit, onOpenKhash: () -> Unit, onOpenSales: () -> Unit, onLogout: () -> Unit) {
     val user = Session.loadCachedUser()
 
     Scaffold(
@@ -59,7 +60,17 @@ fun AppSelectScreen(onOpenTape: () -> Unit, onOpenKhash: () -> Unit, onLogout: (
                 )
             }
 
-            if (user != null && !user.hasApp("tape") && !user.hasApp("khash")) {
+            if (user?.hasApp("sales") == true) {
+                Spacer(Modifier.height(16.dp))
+                AppChoiceCard(
+                    title = "فروش",
+                    subtitle = "کالاها، فاکتور فروش، مشتریان و گزارش فروش",
+                    icon = Icons.Default.ShoppingCart,
+                    onClick = onOpenSales
+                )
+            }
+
+            if (user != null && !user.hasApp("tape") && !user.hasApp("khash") && !user.hasApp("sales")) {
                 Text("شما به هیچ برنامه‌ای دسترسی ندارید. با مدیر سیستم تماس بگیرید.")
             }
         }

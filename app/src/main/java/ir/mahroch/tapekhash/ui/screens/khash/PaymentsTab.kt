@@ -24,15 +24,25 @@ fun PaymentsTab() {
     var message by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var payments by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var filterEmployee by remember { mutableStateOf("") } // خالی = همه‌ی نیروها
+    var filterExpanded by remember { mutableStateOf(false) }
+    var fromDate by remember { mutableStateOf("") }
+    var toDate by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     suspend fun loadPayments() {
         try {
-            val res = ApiClient.call("getPayments")
+            val body = JSONObject()
+            if (filterEmployee.isNotBlank()) body.put("employeeName", filterEmployee)
+            if (fromDate.isNotBlank()) body.put("fromDate", fromDate)
+            if (toDate.isNotBlank()) body.put("toDate", toDate)
+            val res = ApiClient.call("getPayments", body)
             val arr = res.getJSONArray("payments")
             payments = (0 until arr.length()).map { arr.getJSONObject(it) }
         } catch (e: Exception) { }
     }
+
+    LaunchedEffect(filterEmployee, fromDate, toDate) { loadPayments() }
 
     LaunchedEffect(Unit) {
         try {
@@ -94,6 +104,28 @@ fun PaymentsTab() {
         Divider()
         Spacer(Modifier.height(12.dp))
         Text("پرداخت‌های اخیر", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+
+        ExposedDropdownMenuBox(expanded = filterExpanded, onExpandedChange = { filterExpanded = it }) {
+            OutlinedTextField(
+                value = filterEmployee.ifBlank { "همه‌ی نیروها" }, onValueChange = {}, readOnly = true,
+                label = { Text("فیلتر نیرو") }, modifier = Modifier.fillMaxWidth().menuAnchor()
+            )
+            ExposedDropdownMenu(expanded = filterExpanded, onDismissRequest = { filterExpanded = false }) {
+                DropdownMenuItem(text = { Text("همه‌ی نیروها") }, onClick = { filterEmployee = ""; filterExpanded = false })
+                employeeNames.forEach { name ->
+                    DropdownMenuItem(text = { Text(name) }, onClick = { filterEmployee = name; filterExpanded = false })
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        JalaliDateRangeRow(
+            fromValue = fromDate, toValue = toDate,
+            onFromChange = { fromDate = it }, onToChange = { toDate = it },
+            onClear = { fromDate = ""; toDate = "" }
+        )
+        Spacer(Modifier.height(8.dp))
+
         payments.forEach { p ->
             ElevatedCard(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Column(Modifier.padding(10.dp)) {

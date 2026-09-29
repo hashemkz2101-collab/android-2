@@ -9,6 +9,7 @@ import ir.mahroch.tapekhash.data.Session
 import ir.mahroch.tapekhash.ui.screens.AppSelectScreen
 import ir.mahroch.tapekhash.ui.screens.LoginScreen
 import ir.mahroch.tapekhash.ui.screens.khash.KhashMainScreen
+import ir.mahroch.tapekhash.ui.screens.sales.SalesMainScreen
 import ir.mahroch.tapekhash.ui.screens.tape.TapeMainScreen
 
 object Routes {
@@ -16,6 +17,7 @@ object Routes {
     const val APP_SELECT = "app_select"
     const val TAPE = "tape"
     const val KHASH = "khash"
+    const val SALES = "sales"
 }
 
 @Composable
@@ -35,6 +37,7 @@ fun AppNavGraph() {
             AppSelectScreen(
                 onOpenTape = { navController.navigate(Routes.TAPE) },
                 onOpenKhash = { navController.navigate(Routes.KHASH) },
+                onOpenSales = { navController.navigate(Routes.SALES) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
@@ -47,6 +50,9 @@ fun AppNavGraph() {
         }
         composable(Routes.KHASH) {
             KhashMainScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SALES) {
+            SalesMainScreen(onBack = { navController.popBackStack() })
         }
     }
 }

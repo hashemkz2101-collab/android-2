@@ -32,6 +32,10 @@ fun InvoicesTab() {
 
     var query by remember { mutableStateOf("") }
     var invoices by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var filterEmployee by remember { mutableStateOf("") } // خالی = همه‌ی نیروها
+    var filterExpanded by remember { mutableStateOf(false) }
+    var fromDate by remember { mutableStateOf("") }
+    var toDate by remember { mutableStateOf("") }
 
     val scope = rememberCoroutineScope()
 
@@ -39,11 +43,16 @@ fun InvoicesTab() {
         try {
             val body = JSONObject()
             if (query.isNotBlank()) body.put("query", query)
+            if (filterEmployee.isNotBlank()) body.put("employeeName", filterEmployee)
+            if (fromDate.isNotBlank()) body.put("fromDate", fromDate)
+            if (toDate.isNotBlank()) body.put("toDate", toDate)
             val res = ApiClient.call("getInvoices", body)
             val arr = res.getJSONArray("invoices")
             invoices = (0 until arr.length()).map { arr.getJSONObject(it) }
         } catch (e: Exception) { }
     }
+
+    LaunchedEffect(filterEmployee, fromDate, toDate) { loadInvoices() }
 
     LaunchedEffect(Unit) {
         try {
@@ -147,8 +156,30 @@ fun InvoicesTab() {
         Divider()
         Spacer(Modifier.height(12.dp))
         Text("لیست فاکتورها", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+
+        ExposedDropdownMenuBox(expanded = filterExpanded, onExpandedChange = { filterExpanded = it }) {
+            OutlinedTextField(
+                value = filterEmployee.ifBlank { "همه‌ی نیروها" }, onValueChange = {}, readOnly = true,
+                label = { Text("فیلتر نیرو") }, modifier = Modifier.fillMaxWidth().menuAnchor()
+            )
+            ExposedDropdownMenu(expanded = filterExpanded, onDismissRequest = { filterExpanded = false }) {
+                DropdownMenuItem(text = { Text("همه‌ی نیروها") }, onClick = { filterEmployee = ""; filterExpanded = false })
+                employeeNames.forEach { name ->
+                    DropdownMenuItem(text = { Text(name) }, onClick = { filterEmployee = name; filterExpanded = false })
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        JalaliDateRangeRow(
+            fromValue = fromDate, toValue = toDate,
+            onFromChange = { fromDate = it }, onToChange = { toDate = it },
+            onClear = { fromDate = ""; toDate = "" }
+        )
+        Spacer(Modifier.height(8.dp))
+
         Row {
-            OutlinedTextField(value = query, onValueChange = { query = it }, label = { Text("جستجو") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = query, onValueChange = { query = it }, label = { Text("جستجو با شماره فاکتور") }, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(8.dp))
             Button(onClick = { scope.launch { loadInvoices() } }) { Text("جستجو") }
         }
@@ -164,3 +195,4 @@ fun InvoicesTab() {
         }
     }
 }
+

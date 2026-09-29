@@ -30,6 +30,7 @@ fun OrdersTab() {
     var error by remember { mutableStateOf<String?>(null) }
     var filter by remember { mutableStateOf("all") }
     var orders by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     suspend fun loadOrders() {
@@ -40,7 +41,18 @@ fun OrdersTab() {
         } catch (e: Exception) { }
     }
 
-    LaunchedEffect(filter) { loadOrders() }
+    suspend fun searchOrders() {
+        try {
+            val res = ApiClient.call("searchKhashOrders", JSONObject().put("query", searchQuery))
+            val arr = res.getJSONArray("orders")
+            orders = (0 until arr.length()).map { arr.getJSONObject(it) }
+        } catch (e: Exception) { }
+    }
+
+    // با تایپ در جستجو، لیست بر اساس نتیجه‌ی جستجو می‌شود؛ با پاک‌کردنش، به فیلتر وضعیت برمی‌گردد.
+    LaunchedEffect(searchQuery, filter) {
+        if (searchQuery.isBlank()) loadOrders() else searchOrders()
+    }
 
     LaunchedEffect(code, row, similar) {
         preview = ""
@@ -86,7 +98,7 @@ fun OrdersTab() {
                     "updateKhashStatus",
                     JSONObject().put("orderNo", order.optString("order_no")).put("field", field).put("value", !current)
                 )
-                loadOrders()
+                if (searchQuery.isBlank()) loadOrders() else searchOrders()
             } catch (e: ApiException) { error = e.message }
         }
     }
@@ -107,6 +119,15 @@ fun OrdersTab() {
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         Button(onClick = { submit() }, modifier = Modifier.fillMaxWidth()) { Text("ثبت سفارش") }
+
+        Spacer(Modifier.height(16.dp))
+        Divider()
+        Spacer(Modifier.height(8.dp))
+        Text("جستجوی فاکتور برای چک یا تغییر وضعیت", style = MaterialTheme.typography.titleMedium)
+        OutlinedTextField(
+            value = searchQuery, onValueChange = { searchQuery = it },
+            label = { Text("شماره فاکتور، کد، ردیف یا تاریخ") }, modifier = Modifier.fillMaxWidth(), singleLine = true
+        )
 
         Spacer(Modifier.height(12.dp))
         Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
